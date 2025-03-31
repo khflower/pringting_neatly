@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>깔끔하게 인쇄하기 (원고지 + 비용)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .output-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.5rem;
+            margin-top: 0.5rem;
+        }
+        #outputGrid {
+            border: 1px solid #d1d5db;
+            background-color: #f9fafb;
+            padding: 5px;
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+        .grid-line {
+            display: flex;
+        }
+        .grid-cell {
+            font-family: 'Nanum Gothic Coding', monospace;
+            font-size: 16px;
+            width: 28px;
+            height: 28px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: white;
+            box-sizing: border-box;
+        }
+        .grid-cell.is-content-space {
+            color: #b0b0b0;
+        }
+        .grid-cell.is-padding-space {
+            background-color: #f3f4f6;
+        }
+        #lineCosts {
+            padding-top: 5px;
+        }
+        .line-cost-info {
+            font-family: 'Nanum Gothic Coding', monospace;
+            font-size: 14px;
+            height: 28px;
+            line-height: 28px;
+            white-space: nowrap;
+            color: #4b5563;
+        }
+        .button-container {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Nanum+Gothic+Coding&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-md">
+        <h1 class="text-2xl font-bold mb-6 text-center text-gray-800">깔끔하게 인쇄하기 (원고지 + 비용)</h1>
+
+        <div class="mb-4">
+            <label for="inputText" class="block text-sm font-medium text-gray-700 mb-1">텍스트 입력:</label>
+            <textarea id="inputText" rows="6" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="여기에 텍스트를 입력하세요..."></textarea>
+        </div>
+        <div class="mb-6">
+            <label for="maxLength" class="block text-sm font-medium text-gray-700 mb-1">최대 줄 길이 (M):</label>
+            <input type="number" id="maxLength" value="20" min="1" class="w-full p-3 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <div class="button-container">
+            <button id="formatButton" class="flex-1 bg-indigo-600 text-white py-3 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out font-medium">
+                정렬하기 (최적 비용)
+            </button>
+            <button id="randomButton" class="flex-1 bg-gray-600 text-white py-3 px-4 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition duration-150 ease-in-out font-medium">
+                순서대로 배열하기
+            </button>
+        </div>
+
+        <div class="mt-8">
+            <label class="block text-sm font-medium text-gray-700 mb-1">결과:</label>
+            <div class="output-container">
+                <div id="outputGrid" class="rounded-md" style="min-height: 100px;">
+                </div>
+                <div id="lineCosts">
+                </div>
+            </div>
+        </div>
+
+        <div id="costResult" class="mt-4 text-sm text-gray-600">
+            총 비용: -
+        </div>
+    </div>
+
+    <script>
+        function calculateCost(words, M, j, i) {
+            let length = 0;
+            for (let k = j - 1; k < i; k++) {
+                if (words[k].length > M) return Infinity;
+                length += words[k].length;
+            }
+            const spaces = i - j;
+            const totalLength = length + spaces;
+            if (totalLength > M) return Infinity;
+            return Math.pow(M - totalLength, 3);
+        }
+
+        function displayGrid(linesData, M, showCost = true) {
+            outputGrid.innerHTML = '';
+            lineCostsDiv.innerHTML = '';
+
+            linesData.forEach((lineData, index) => {
+                const lineStr = lineData.text;
+                const originalLength = lineData.originalLength;
+                const padding = lineData.padding;
+                const cost = lineData.cost;
+                const isLastLine = lineData.isLastLine;
+
+                const gridLineDiv = document.createElement('div');
+                gridLineDiv.className = 'grid-line';
+                for (let i = 0; i < M; i++) {
+                    const gridCellDiv = document.createElement('div');
+                    gridCellDiv.className = 'grid-cell';
+                    const char = lineStr[i] || '';
+                    if (char === ' ') {
+                        gridCellDiv.innerHTML = '&nbsp;';
+                        if (i >= originalLength) {
+                            gridCellDiv.classList.add('is-padding-space');
+                        } else {
+                            gridCellDiv.classList.add('is-content-space');
+                        }
+                    } else {
+                        gridCellDiv.textContent = char;
+                    }
+                    gridLineDiv.appendChild(gridCellDiv);
+                }
+                outputGrid.appendChild(gridLineDiv);
+
+                const costInfoP = document.createElement('p');
+                costInfoP.className = 'line-cost-info';
+                let infoText = `공백: ${padding}`;
+                if (showCost) {
+                     infoText += `, 비용: ${cost}`;
+                     if (isLastLine && linesData.length > 0) {
+                         infoText = `공백: ${padding}, 비용: 0 (마지막 줄)`;
+                     }
+                }
+                costInfoP.textContent = infoText;
+                lineCostsDiv.appendChild(costInfoP);
+            });
+        }
+
+        const formatButton = document.getElementById('formatButton');
+        const randomButton = document.getElementById('randomButton');
+        const inputText = document.getElementById('inputText');
+        const maxLengthInput = document.getElementById('maxLength');
+        const outputGrid = document.getElementById('outputGrid');
+        const lineCostsDiv = document.getElementById('lineCosts');
+        const costResult = document.getElementById('costResult');
+
+        function processInput() {
+            const text = inputText.value.trim();
+            const M = parseInt(maxLengthInput.value, 10);
+
+            if (!text) {
+                alert("텍스트를 입력해주세요.");
+                return null;
+            }
+            if (isNaN(M) || M <= 0) {
+                alert("최대 줄 길이는 1 이상의 숫자로 입력해주세요.");
+                return null;
+            }
+
+            const words = text.split(/\s+/).filter(word => word.length > 0);
+            const n = words.length;
+
+            for (const word of words) {
+                if (word.length > M) {
+                    outputGrid.innerHTML = `<p class="text-red-600">오류: 단어 "${word}"의 길이가 최대 줄 길이(${M})보다 깁니다.</p>`;
+                    lineCostsDiv.innerHTML = '';
+                    costResult.textContent = "총 비용: -";
+                    return null;
+                }
+            }
+
+            return { words, M, n };
+        }
+
+        formatButton.addEventListener('click', () => {
+            const inputData = processInput();
+            if (!inputData) return;
+
+            const { words, M, n } = inputData;
+
+            outputGrid.innerHTML = '';
+            lineCostsDiv.innerHTML = '';
+            costResult.textContent = "총 비용: -";
+
+            if (n === 0) { costResult.textContent = "총 비용: 0"; return; }
+
+            const dp = new Array(n + 1).fill(Infinity);
+            const parent = new Array(n + 1).fill(0);
+            dp[0] = 0;
+
+            for (let j = 1; j <= n; j++) {
+                for (let i = 1; i <= j; i++) {
+                    const cost = calculateCost(words, M, i, j);
+                    const currentLineCost = (j === n && cost !== Infinity) ? 0 : cost;
+                    if (cost !== Infinity && dp[i - 1] !== Infinity) {
+                         const newTotalCost = dp[i - 1] + currentLineCost;
+                         if (newTotalCost < dp[j]) {
+                            dp[j] = newTotalCost;
+                            parent[j] = i;
+                        }
+                    }
+                }
+            }
+
+            if (dp[n] === Infinity) {
+                 outputGrid.innerHTML = '<p class="text-red-600">오류: 단어 배치가 불가능합니다.</p>';
+                return;
+            }
+
+            const linesData = [];
+            let current = n;
+            let lineIndex = 0;
+            while (current > 0) {
+                 const start = parent[current];
+                 const lineWords = words.slice(start - 1, current);
+                 const originalLineStr = lineWords.join(" ");
+                 const originalLength = originalLineStr.length;
+                 let paddedLineStr = originalLineStr;
+                 const padding = M - originalLength;
+                 let lineCost = 0;
+                 if (padding >= 0) {
+                     if (padding > 0) paddedLineStr += " ".repeat(padding);
+                     if (lineIndex > 0) lineCost = Math.pow(padding, 3);
+                 } else {
+                     paddedLineStr = originalLineStr.substring(0, M);
+                 }
+                 linesData.push({
+                     text: paddedLineStr, originalLength: originalLength,
+                     padding: Math.max(0, padding), cost: lineCost,
+                     isLastLine: lineIndex === 0
+                 });
+                 current = start - 1; lineIndex++;
+             }
+            linesData.reverse();
+
+            displayGrid(linesData, M, true);
+            costResult.textContent = `총 비용: ${dp[n]}`;
+        });
+
+        randomButton.addEventListener('click', () => {
+             const inputData = processInput();
+            if (!inputData) return;
+
+            const { words, M, n } = inputData;
+
+            outputGrid.innerHTML = '';
+            lineCostsDiv.innerHTML = '';
+            costResult.textContent = "총 비용: -";
+
+            if (n === 0) { return; }
+
+            const linesData = [];
+            let currentLineWords = [];
+            let currentLineLength = 0;
+
+            words.forEach((word, index) => {
+                const potentialLength = currentLineLength + (currentLineWords.length > 0 ? 1 : 0) + word.length;
+
+                if (potentialLength <= M) {
+                    currentLineWords.push(word);
+                    currentLineLength = potentialLength;
+                } else {
+                    const originalLineStr = currentLineWords.join(" ");
+                    const originalLength = originalLineStr.length;
+                    let paddedLineStr = originalLineStr;
+                    const padding = M - originalLength;
+                    if (padding > 0) paddedLineStr += " ".repeat(padding);
+
+                    linesData.push({
+                        text: paddedLineStr,
+                        originalLength: originalLength,
+                        padding: padding,
+                        cost: 0,
+                        isLastLine: false
+                    });
+
+                    currentLineWords = [word];
+                    currentLineLength = word.length;
+                }
+            });
+
+            if (currentLineWords.length > 0) {
+                const originalLineStr = currentLineWords.join(" ");
+                const originalLength = originalLineStr.length;
+                let paddedLineStr = originalLineStr;
+                const padding = M - originalLength;
+                if (padding > 0) paddedLineStr += " ".repeat(padding);
+
+                linesData.push({
+                    text: paddedLineStr,
+                    originalLength: originalLength,
+                    padding: padding,
+                    cost: 0,
+                    isLastLine: true
+                });
+            }
+
+            // 순서대로 배열하기 방식의 총 비용 계산
+            let totalSequentialCost = 0;
+            for(let i = 0; i < linesData.length - 1; i++) { // 마지막 줄 제외
+                totalSequentialCost += Math.pow(linesData[i].padding, 3);
+            }
+
+            displayGrid(linesData, M, false); // 비용은 각 줄에 표시 안 함
+            costResult.textContent = `총 비용: ${totalSequentialCost} (순서대로 배열)`; // 계산된 총 비용 표시
+        });
+
+
+        inputText.value = "이것은 깔끔하게 인쇄하기 알고리즘의 예제 텍스트입니다. 동적 프로그래밍을 사용하여 줄 바꿈 비용을 최소화합니다.";
+
+    </script>
+</body>
+</html>
