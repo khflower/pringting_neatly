@@ -19,26 +19,17 @@
             border: 1px solid #d1d5db;
             background-color: #f9fafb;
             padding: 5px;
-            overflow-x: auto; /* 내부 그리드가 너무 커지면 스크롤 */
+            overflow-x: auto;
             flex-shrink: 0;
-            /* 최대 너비 설정 (선택 사항) */
-            /* max-width: 70%; */
         }
-
-        /* 그리드 한 줄: CSS Grid 컨테이너로 변경 */
         .grid-line {
-            display: grid;
-            /* grid-template-columns를 JS에서 설정 (아래 CSS 변수 사용) */
-            grid-template-columns: repeat(var(--grid-m-value, 20), minmax(0, 1fr)); /* 기본값 M=20 */
-            /* height 제거 -> 내부 셀 높이에 따라 결정 */
+            display: flex;
         }
-
-        /* 그리드 셀 (각 글자 칸) */
         .grid-cell {
             font-family: 'Nanum Gothic Coding', monospace;
-            font-size: 14px; /* 칸이 작아질 수 있으므로 폰트 약간 줄임 */
-            /* width 제거 -> grid-template-columns로 결정됨 */
-            height: 26px; /* 높이 고정 (칸이 정사각형이 아닐 수 있음) */
+            font-size: 16px;
+            width: 28px;
+            height: 28px;
             border: 1px solid #e5e7eb;
             display: flex;
             justify-content: center;
@@ -46,7 +37,6 @@
             overflow: hidden;
             background-color: white;
             box-sizing: border-box;
-            min-width: 10px; /* 셀이 너무 작아지는 것 방지 */
         }
         .grid-cell.is-content-space {
             color: #b0b0b0;
@@ -60,8 +50,8 @@
         .line-cost-info {
             font-family: 'Nanum Gothic Coding', monospace;
             font-size: 14px;
-            height: 26px; /* grid-cell 높이와 일치 */
-            line-height: 26px; /* height와 일치 */
+            height: 28px;
+            line-height: 28px;
             white-space: nowrap;
             color: #4b5563;
         }
@@ -126,7 +116,7 @@
             return Math.pow(M - totalLength, 3);
         }
 
-        function displayGrid(linesData, M) {
+        function displayGrid(linesData, M) { // showCost 파라미터 제거
             outputGrid.innerHTML = '';
             lineCostsDiv.innerHTML = '';
 
@@ -134,14 +124,11 @@
                 const lineStr = lineData.text;
                 const originalLength = lineData.originalLength;
                 const padding = lineData.padding;
-                const cost = lineData.cost;
+                const cost = lineData.cost; // 각 줄의 계산된 비용 (padding^3 또는 0)
                 const isLastLine = lineData.isLastLine;
 
                 const gridLineDiv = document.createElement('div');
                 gridLineDiv.className = 'grid-line';
-                // CSS 변수 '--grid-m-value' 설정하여 grid-template-columns 제어
-                gridLineDiv.style.setProperty('--grid-m-value', M);
-
                 for (let i = 0; i < M; i++) {
                     const gridCellDiv = document.createElement('div');
                     gridCellDiv.className = 'grid-cell';
@@ -162,11 +149,12 @@
 
                 const costInfoP = document.createElement('p');
                 costInfoP.className = 'line-cost-info';
+                // 용어 변경: 공백 -> neatness, 비용 -> neatness^3
                 let infoText = `neatness: ${padding}`;
-                let displayCost = cost;
+                let displayCost = cost; // 표시될 비용 값
 
                 if (isLastLine && linesData.length > 0) {
-                    displayCost = 0;
+                    displayCost = 0; // 마지막 줄 비용은 항상 0으로 표시
                     infoText += `, neatness^3: ${displayCost} (마지막 줄)`;
                 } else {
                      infoText += `, neatness^3: ${displayCost}`;
@@ -216,11 +204,14 @@
         formatButton.addEventListener('click', () => {
             const inputData = processInput();
             if (!inputData) return;
+
             const { words, M, n } = inputData;
+
             outputGrid.innerHTML = '';
             lineCostsDiv.innerHTML = '';
-            costResult.textContent = "cost: -";
-            if (n === 0) { costResult.textContent = "cost: 0"; return; }
+            costResult.textContent = "cost: -"; // 용어 변경
+
+            if (n === 0) { costResult.textContent = "cost: 0"; return; } // 용어 변경
 
             const dp = new Array(n + 1).fill(Infinity);
             const parent = new Array(n + 1).fill(0);
@@ -258,30 +249,34 @@
                  let lineCost = 0;
                  if (padding >= 0) {
                      if (padding > 0) paddedLineStr += " ".repeat(padding);
+                     // DP에서 계산된 비용이 아닌, 실제 패딩 기반 비용 저장
                      if (lineIndex > 0) lineCost = Math.pow(padding, 3);
                  } else {
                      paddedLineStr = originalLineStr.substring(0, M);
                  }
                  linesData.push({
                      text: paddedLineStr, originalLength: originalLength,
-                     padding: Math.max(0, padding), cost: lineCost,
+                     padding: Math.max(0, padding), cost: lineCost, // 실제 패딩 기반 비용 저장
                      isLastLine: lineIndex === 0
                  });
                  current = start - 1; lineIndex++;
              }
             linesData.reverse();
 
-            displayGrid(linesData, M);
-            costResult.textContent = `cost: ${dp[n]}`;
+            displayGrid(linesData, M); // showCost 파라미터 제거
+            costResult.textContent = `cost: ${dp[n]}`; // 용어 변경
         });
 
         randomButton.addEventListener('click', () => {
              const inputData = processInput();
             if (!inputData) return;
+
             const { words, M, n } = inputData;
+
             outputGrid.innerHTML = '';
             lineCostsDiv.innerHTML = '';
-            costResult.textContent = "cost: -";
+            costResult.textContent = "cost: -"; // 용어 변경
+
             if (n === 0) { return; }
 
             const linesData = [];
@@ -299,15 +294,20 @@
                     const originalLength = originalLineStr.length;
                     let paddedLineStr = originalLineStr;
                     const padding = M - originalLength;
-                    let lineCost = 0;
+                    let lineCost = 0; // 비용 계산 추가
                     if (padding > 0) {
                         paddedLineStr += " ".repeat(padding);
-                        lineCost = Math.pow(padding, 3);
+                        lineCost = Math.pow(padding, 3); // 비용 계산
                     }
+
                     linesData.push({
-                        text: paddedLineStr, originalLength: originalLength,
-                        padding: padding, cost: lineCost, isLastLine: false
+                        text: paddedLineStr,
+                        originalLength: originalLength,
+                        padding: padding,
+                        cost: lineCost, // 계산된 비용 저장
+                        isLastLine: false
                     });
+
                     currentLineWords = [word];
                     currentLineLength = word.length;
                 }
@@ -318,22 +318,30 @@
                 const originalLength = originalLineStr.length;
                 let paddedLineStr = originalLineStr;
                 const padding = M - originalLength;
-                let lineCost = 0;
-                if (padding > 0) paddedLineStr += " ".repeat(padding);
+                let lineCost = 0; // 마지막 줄 비용은 0
+                if (padding > 0) {
+                    paddedLineStr += " ".repeat(padding);
+                }
+
                 linesData.push({
-                    text: paddedLineStr, originalLength: originalLength,
-                    padding: padding, cost: lineCost, isLastLine: true
+                    text: paddedLineStr,
+                    originalLength: originalLength,
+                    padding: padding,
+                    cost: lineCost, // 마지막 줄 비용은 0
+                    isLastLine: true
                 });
             }
 
             let totalSequentialCost = 0;
             for(let i = 0; i < linesData.length - 1; i++) {
+                // linesData에 저장된 비용(cost)을 사용 (이미 계산됨)
                 totalSequentialCost += linesData[i].cost;
             }
 
-            displayGrid(linesData, M);
-            costResult.textContent = `cost: ${totalSequentialCost} (순서대로 배열)`;
+            displayGrid(linesData, M); // showCost 파라미터 제거
+            costResult.textContent = `cost: ${totalSequentialCost} (순서대로 배열)`; // 용어 변경
         });
+
 
         inputText.value = "이것은 깔끔하게 인쇄하기 알고리즘의 예제 텍스트입니다. 동적 프로그래밍을 사용하여 줄 바꿈 비용을 최소화합니다.";
 
